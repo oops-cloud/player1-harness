@@ -4,11 +4,11 @@
 const config = require('./config');
 
 // Rough public per-MTok prices for cost accounting. Update if pricing changes.
-// Only used to estimate spend for the budget lifeline — not billing-accurate.
+// Only used to estimate spend for the budget lifeline, not billing-accurate.
 const PRICES = {
-  'claude-opus-4-8': { in: 5.0, out: 25.0 },
+  'claude-opus-4-8': { in: 15.0, out: 75.0 },
   'claude-sonnet-4-6': { in: 3.0, out: 15.0 },
-  'claude-haiku-4-5-20251001': { in: 1.0, out: 5.0 },
+  'claude-haiku-4-5-20251001': { in: 0.8, out: 4.0 },
 };
 
 let _spentUsd = 0;
@@ -21,7 +21,7 @@ function estimateCost(model, usage) {
   return (inTok / 1e6) * p.in + (outTok / 1e6) * p.out;
 }
 
-// Call the model. `system` is a string, `user` is a string. Returns the text content.
+// Call the model. `system` and `user` are strings. Returns the text content.
 async function ask({ system, user, model = config.model, maxTokens = config.maxTokens }) {
   if (!config.apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
 
@@ -55,24 +55,37 @@ async function ask({ system, user, model = config.model, maxTokens = config.maxT
   return text;
 }
 
-// Models love to wrap JSON in prose or fences. Pull the first JSON object/array out cleanly.
+// Pull the JSON object out of model output. Robust to prose and code fences: prefers an
+// explicit ```json block, otherwise scans the raw text. Both callers return a JSON OBJECT,
+// so we anchor on the first '{' and walk to its matching '}', tracking string state so that
+// braces/brackets/quotes inside string values (e.g. Rust `seeds = [b"user", authority]`)
+// can never throw off the depth count.
 function extractJson(text) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = fenced ? fenced[1] : text;
-  const start = candidate.search(/[[{]/);
-  if (start === -1) throw new Error('No JSON found in model output');
-  // Walk to the matching close bracket.
-  const open = candidate[start];
-  const close = open === '{' ? '}' : ']';
+  const jsonFence = text.match(/```json\s*([\s\S]*?)```/i);
+  const candidate = jsonFence ? jsonFence[1] : text;
+
+  const start = candidate.indexOf('{');
+  if (start === -1) throw new Error('No JSON object found in model output');
+
   let depth = 0;
+  let inStr = false;
+  let esc = false;
   for (let i = start; i < candidate.length; i++) {
-    if (candidate[i] === open) depth++;
-    else if (candidate[i] === close) {
+    const c = candidate[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}') {
       depth--;
       if (depth === 0) return JSON.parse(candidate.slice(start, i + 1));
     }
   }
-  throw new Error('Unbalanced JSON in model output');
+  throw new Error('Unbalanced JSON object in model output');
 }
 
 module.exports = { ask, extractJson, spentUsd };
