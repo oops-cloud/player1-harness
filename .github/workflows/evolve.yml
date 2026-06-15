@@ -41,7 +41,7 @@ jobs:
             ~/.rustup
             ~/.local/share/solana
             ~/.avm
-          key: toolchains-${{ runner.os }}-anchor0.31-solana4.0-clean
+          key: toolchains-${{ runner.os }}-anchor0.31-solana4.0-pt153
 
       - name: Install toolchains (cached after first run)
         run: |
@@ -56,6 +56,9 @@ jobs:
             avm install 0.31.1 && avm use 0.31.1
           fi
           solana --version && anchor --version
+          cargo-build-sbf --version || true
+          ( cd "$GITHUB_WORKSPACE/workspace" && cargo-build-sbf --tools-version v1.53 ) || true
+          cargo-build-sbf --version || true
 
       - name: Configure devnet wallet
         run: |
