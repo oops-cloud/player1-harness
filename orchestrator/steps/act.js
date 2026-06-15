@@ -26,6 +26,9 @@ async function act(ctx, decision) {
     'It must compile and its tests must pass on devnet. Write a test that genuinely proves',
     'the concept — do not write a test that trivially passes. You may add new test files;',
     'you may NOT modify or delete files named tests/proof_*.ts or Anchor.toml.',
+    'Name your OWN test without the proof_ prefix (for example tests/pda.ts). proof_ is',
+    'reserved for the harness and writes to tests/proof_*.ts are rejected, so a test named',
+    'that way is silently dropped and proves nothing. Put your proving test in a normal file.',
   ].join('\n');
 
   const user = [

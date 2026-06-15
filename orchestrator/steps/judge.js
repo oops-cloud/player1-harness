@@ -20,6 +20,10 @@ function reassertProofBar() {
 
 function judge() {
   reassertProofBar();
+  // anchor leaves a local validator + ledger behind when a test fails; without
+  // clearing them, attempts after the first hit a port-in-use error and die in ~0.3s.
+  try { execSync('pkill -f solana-test-validator', { stdio: 'ignore' }); } catch (_) {}
+  try { execSync('rm -rf .anchor test-ledger', { cwd: config.workspaceDir, stdio: 'ignore' }); } catch (_) {}
   try {
     // anchor test builds the program, spins a local validator, and runs all tests
     // (proof-bar tests + any tests the agent added). One red test = a red session.

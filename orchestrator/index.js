@@ -63,6 +63,7 @@ async function session() {
     if (verdict.green) break;
 
     log(`attempt ${attempt}: RED. reverting working tree.`);
+    log('judge tail:', (verdict.log || '').slice(-1200));
     git.hardReset(baseRef); // discard this attempt entirely (HARNESS.md §3)
   }
 
