@@ -41,7 +41,7 @@ jobs:
             ~/.rustup
             ~/.local/share/solana
             ~/.avm
-          key: toolchains-${{ runner.os }}-anchor0.31-solana4.0
+          key: toolchains-${{ runner.os }}-anchor0.31-solana4.0-clean
 
       - name: Install toolchains (cached after first run)
         run: |
