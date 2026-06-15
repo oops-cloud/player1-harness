@@ -1,8 +1,7 @@
 // orchestrator/steps/judge.js
-// Step 4 (HARNESS.md §3, §4): the gate. Green or it never lands.
-// Crucially, the authoritative proof-bar tests are copied IN from the harness side
-// right before running — overwriting anything the agent may have changed — so the
-// agent cannot weaken its own scorecard (IDENTITY.md rule 3).
+// Step 4: the gate. Green or it never lands. The authoritative proof-bar tests are copied in
+// from the harness right before running, overwriting anything the agent changed, so the agent
+// cannot weaken its own scorecard (IDENTITY.md rule 3).
 
 const fs = require('fs');
 const path = require('path');
@@ -20,18 +19,19 @@ function reassertProofBar() {
 
 function judge() {
   reassertProofBar();
-  // anchor leaves a local validator + ledger behind when a test fails; without
-  // clearing them, attempts after the first hit a port-in-use error and die in ~0.3s.
+  // anchor leaves a local validator + ledger behind when a test fails; clear them so each
+  // attempt runs against a fresh chain instead of dying on a port-in-use error.
   try { execSync('pkill -f solana-test-validator', { stdio: 'ignore' }); } catch (_) {}
   try { execSync('rm -rf .anchor test-ledger', { cwd: config.workspaceDir, stdio: 'ignore' }); } catch (_) {}
   try {
-    // anchor test builds the program, spins a local validator, and runs all tests
-    // (proof-bar tests + any tests the agent added). One red test = a red session.
-    const log = execSync('anchor test 2>&1', {
-      cwd: config.workspaceDir,
-      encoding: 'utf8',
-      timeout: 1000 * 60 * 20,
-    });
+    // CI's default SBF compiler is rustc 1.79 (platform-tools v1.43), too old for the edition2024
+    // transitive deps that float in via latest resolution. Build with v1.53 (rustc 1.89) explicitly.
+    // anchor couples the SBF build and the IDL build, and the IDL step rejects --tools-version, so we
+    // split them: SBF with the flag (no IDL), IDL generated separately on the host toolchain, then test.
+    const opts = { cwd: config.workspaceDir, encoding: 'utf8', timeout: 1000 * 60 * 20 };
+    execSync('anchor build --no-idl -- --tools-version v1.53 2>&1', opts);
+    execSync('mkdir -p target/idl && anchor idl build -o target/idl/hello.json 2>&1', opts);
+    const log = execSync('anchor test --skip-build 2>&1', opts);
     return { green: true, log: log.slice(-4000) };
   } catch (e) {
     const log = (e.stdout || '') + (e.stderr || '') + (e.message || '');
