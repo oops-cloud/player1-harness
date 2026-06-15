@@ -24,8 +24,8 @@ jobs:
       - name: Checkout workspace
         uses: actions/checkout@v4
         with:
-          repository: ${{ vars.WORKSPACE_REPO }}     # e.g. oops-cloud/player1-workspace
-          token: ${{ secrets.WORKSPACE_TOKEN }}        # GitHub App / fine-grained PAT, workspace-scoped
+          repository: ${{ vars.WORKSPACE_REPO }}
+          token: ${{ secrets.WORKSPACE_TOKEN }}
           path: workspace
 
       - name: Setup Node
@@ -40,8 +40,9 @@ jobs:
             ~/.cargo
             ~/.rustup
             ~/.local/share/solana
+            ~/.cache/solana
             ~/.avm
-          key: toolchains-${{ runner.os }}-anchor0.31-solana4.0-pt153
+          key: toolchains-${{ runner.os }}-anchor0.31-solana4.0-pt153-c2
 
       - name: Install toolchains (cached after first run)
         run: |
@@ -57,8 +58,17 @@ jobs:
           fi
           solana --version && anchor --version
           cargo-build-sbf --version || true
-          ( cd "$GITHUB_WORKSPACE/workspace" && cargo-build-sbf --tools-version v1.53 ) || true
-          cargo-build-sbf --version || true
+          # CI's cargo-build-sbf defaults to platform-tools v1.43 (rustc 1.79) and cannot fetch a
+          # newer version through the installer. The dependency tree needs edition2024 (rustc 1.85+),
+          # so plant v1.53 (rustc 1.89) directly in the cache cargo-build-sbf reads — the same directory
+          # a working Mac already has. Idempotent and cached across runs, so it downloads only once.
+          if [ ! -x "$HOME/.cache/solana/v1.53/platform-tools/rust/bin/rustc" ]; then
+            echo "Planting platform-tools v1.53 (rustc 1.89) into the sbf cache..."
+            mkdir -p "$HOME/.cache/solana/v1.53/platform-tools"
+            curl -sSfL https://github.com/anza-xyz/platform-tools/releases/download/v1.53/platform-tools-linux-x86_64.tar.bz2 -o /tmp/pt.tar.bz2
+            tar -xjf /tmp/pt.tar.bz2 -C "$HOME/.cache/solana/v1.53/platform-tools"
+          fi
+          "$HOME/.cache/solana/v1.53/platform-tools/rust/bin/rustc" --version
 
       - name: Configure devnet wallet
         run: |
