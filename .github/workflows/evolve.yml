@@ -1,0 +1,78 @@
+name: player1-evolve
+
+# The clock (HARNESS.md §2). Lives in the locked harness; the agent cannot change its cadence.
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours — tunable
+  workflow_dispatch: {}      # allow a manual kick for testing
+
+concurrency:
+  group: player1-session     # never run two sessions at once
+  cancel-in-progress: false
+
+jobs:
+  session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      # The harness (this repo), pinned implicitly to the ref this workflow runs from.
+      - name: Checkout harness
+        uses: actions/checkout@v4
+
+      # The agent's repo — a SEPARATE repo. The token below is scoped to it ONLY,
+      # never to the harness, so the agent can never edit the thing that runs it.
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.WORKSPACE_REPO }}     # e.g. oops-cloud/player1-workspace
+          token: ${{ secrets.WORKSPACE_TOKEN }}        # GitHub App / fine-grained PAT, workspace-scoped
+          path: workspace
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache Rust + Solana + Anchor toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo
+            ~/.rustup
+            ~/.local/share/solana
+            ~/.avm
+          key: toolchains-${{ runner.os }}-anchor0.31-solana2.1
+
+      - name: Install toolchains (cached after first run)
+        run: |
+          set -e
+          if ! command -v solana >/dev/null; then
+            sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          fi
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          if ! command -v anchor >/dev/null; then
+            cargo install --git https://github.com/coral-xyz/anchor avm --force
+            avm install 0.31.1 && avm use 0.31.1
+          fi
+          solana --version && anchor --version
+
+      - name: Configure devnet wallet
+        run: |
+          mkdir -p ~/.config/solana
+          echo '${{ secrets.DEVNET_KEYPAIR }}' > ~/.config/solana/id.json
+          solana config set --url "${{ secrets.HELIUS_RPC_URL }}" || solana config set --url devnet
+
+      - name: Install workspace test deps
+        working-directory: workspace
+        run: npm install --no-audit --no-fund
+
+      - name: Run one session
+        working-directory: orchestrator
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HELIUS_RPC_URL: ${{ secrets.HELIUS_RPC_URL }}
+          PLAYER1_WORKSPACE_DIR: ${{ github.workspace }}/workspace
+          PLAYER1_MODEL: ${{ vars.PLAYER1_MODEL }}
+        run: |
+          npm run session
