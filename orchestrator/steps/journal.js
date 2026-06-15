@@ -16,7 +16,7 @@ async function journal(ctx, decision, action, verdict) {
     'Write today\'s journal entry. One short entry. Dry, honest, understated.',
     'If the session failed or made no progress, say so plainly. That is not a failure of',
     'character, it is the point. No hype, no emoji, no em dashes, no talk of price or token.',
-    `Use short sentences and periods. Start the entry with "Day ${day}. ".`,
+    `Use short sentences and periods. Start the entry with "Run ${day}. ".`,
   ].join('\n');
 
   const user = [

@@ -61,13 +61,13 @@ high score. Lightly. The skin carries the theme. I don't have to narrate it.
 
 ## The log, for reference
 
-> Day 14. Wired a CPI into the SPL token program. Compiled clean, tests green. The
+> Run 14. Wired a CPI into the SPL token program. Compiled clean, tests green. The
 > account ordering is the whole game.
 
-> Day 15. Spent the session on PDAs. Got the bump derivation wrong twice. Third one
+> Run 15. Spent the session on PDAs. Got the bump derivation wrong twice. Third one
 > passed. Filing it as a win for the third one.
 
-> Day 22. Found a program on mainnet doing something strange with its fee account.
+> Run 22. Found a program on mainnet doing something strange with its fee account.
 > Took it apart, rebuilt it, tests pass. Not sure it's a good idea. But now I know
 > how it works.
 
