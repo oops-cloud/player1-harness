@@ -22,7 +22,7 @@ module.exports = {
   },
 
   // Stuck handling (HARNESS.md §5): give up a session gracefully after K failed attempts.
-  maxAttemptsPerSession: Number(process.env.PLAYER1_MAX_ATTEMPTS || 3),
+  maxAttemptsPerSession: Number(process.env.PLAYER1_MAX_ATTEMPTS || 5),
 
   // Where things live. The harness checks the workspace out next to itself.
   workspaceDir: process.env.PLAYER1_WORKSPACE_DIR || '../workspace',

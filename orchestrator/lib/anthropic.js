@@ -6,7 +6,7 @@ const config = require('./config');
 // Rough public per-MTok prices for cost accounting. Update if pricing changes.
 // Only used to estimate spend for the budget lifeline, not billing-accurate.
 const PRICES = {
-  'claude-opus-4-8': { in: 15.0, out: 75.0 },
+  'claude-opus-4-8': { in: 5.0, out: 25.0 },
   'claude-sonnet-4-6': { in: 3.0, out: 15.0 },
   'claude-haiku-4-5-20251001': { in: 0.8, out: 4.0 },
 };
