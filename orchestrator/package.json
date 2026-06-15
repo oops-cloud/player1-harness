@@ -6,6 +6,6 @@
   "type": "commonjs",
   "engines": { "node": ">=20" },
   "scripts": {
-    "session": "node orchestrator/index.js"
+    "session": "node index.js"
   }
 }
