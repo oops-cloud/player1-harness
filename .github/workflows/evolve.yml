@@ -1,13 +1,12 @@
 name: player1-evolve
 
-# The clock (HARNESS.md §2). Lives in the locked harness; the agent cannot change its cadence.
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours — tunable
-  workflow_dispatch: {}      # allow a manual kick for testing
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
 
 concurrency:
-  group: player1-session     # never run two sessions at once
+  group: player1-session
   cancel-in-progress: false
 
 jobs:
@@ -15,12 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
-      # The harness (this repo), pinned implicitly to the ref this workflow runs from.
       - name: Checkout harness
         uses: actions/checkout@v4
 
-      # The agent's repo — a SEPARATE repo. The token below is scoped to it ONLY,
-      # never to the harness, so the agent can never edit the thing that runs it.
+      # Separate repo, workspace-scoped token: the agent can never edit the harness that runs it.
       - name: Checkout workspace
         uses: actions/checkout@v4
         with:
@@ -42,7 +39,7 @@ jobs:
             ~/.local/share/solana
             ~/.cache/solana
             ~/.avm
-          key: toolchains-${{ runner.os }}-anchor0.31-solana4.0-pt153-c2
+          key: toolchains-${{ runner.os }}-anchor0.31-solana4.0-native
 
       - name: Install toolchains (cached after first run)
         run: |
@@ -58,17 +55,6 @@ jobs:
           fi
           solana --version && anchor --version
           cargo-build-sbf --version || true
-          # CI's cargo-build-sbf defaults to platform-tools v1.43 (rustc 1.79) and cannot fetch a
-          # newer version through the installer. The dependency tree needs edition2024 (rustc 1.85+),
-          # so plant v1.53 (rustc 1.89) directly in the cache cargo-build-sbf reads — the same directory
-          # a working Mac already has. Idempotent and cached across runs, so it downloads only once.
-          if [ ! -x "$HOME/.cache/solana/v1.53/platform-tools/rust/bin/rustc" ]; then
-            echo "Planting platform-tools v1.53 (rustc 1.89) into the sbf cache..."
-            mkdir -p "$HOME/.cache/solana/v1.53/platform-tools"
-            curl -sSfL https://github.com/anza-xyz/platform-tools/releases/download/v1.53/platform-tools-linux-x86_64.tar.bz2 -o /tmp/pt.tar.bz2
-            tar -xjf /tmp/pt.tar.bz2 -C "$HOME/.cache/solana/v1.53/platform-tools"
-          fi
-          "$HOME/.cache/solana/v1.53/platform-tools/rust/bin/rustc" --version
 
       - name: Configure devnet wallet
         run: |

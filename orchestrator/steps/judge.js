@@ -29,7 +29,7 @@ function judge() {
     // anchor couples the SBF build and the IDL build, and the IDL step rejects --tools-version, so we
     // split them: SBF with the flag (no IDL), IDL generated separately on the host toolchain, then test.
     const opts = { cwd: config.workspaceDir, encoding: 'utf8', timeout: 1000 * 60 * 20 };
-    execSync('anchor build --no-idl -- --tools-version v1.53 2>&1', opts);
+    execSync('anchor build --no-idl -- --tools-version v1.43 2>&1', opts);
     execSync('mkdir -p target/idl && anchor idl build -o target/idl/hello.json 2>&1', opts);
     const log = execSync('anchor test --skip-build 2>&1', opts);
     return { green: true, log: log.slice(-4000) };
