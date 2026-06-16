@@ -8,7 +8,12 @@ const { ask } = require('../lib/anthropic');
 const config = require('../lib/config');
 
 async function journal(ctx, decision, action, verdict) {
-  const day = (ctx.state.day ?? 0) + 1;
+  // `run` is the session counter — drives the "Run N" label and the file sequence.
+  // `day` is real elapsed days since the first run, which is what the blog header shows,
+  // so the header tracks wall-clock time instead of session count. `born` is set once.
+  const run = (ctx.state.run ?? ctx.state.day ?? 0) + 1;
+  const born = ctx.state.born ?? new Date().toISOString();
+  const day = Math.max(0, Math.floor((Date.now() - new Date(born).getTime()) / 86400000));
 
   const system = [
     ctx.personality,
@@ -16,7 +21,7 @@ async function journal(ctx, decision, action, verdict) {
     'Write today\'s journal entry. One short entry. Dry, honest, understated.',
     'If the session failed or made no progress, say so plainly. That is not a failure of',
     'character, it is the point. No hype, no emoji, no em dashes, no talk of price or token.',
-    `Use short sentences and periods. Start the entry with "Run ${day}. ".`,
+    `Use short sentences and periods. Start the entry with "Run ${run}. ".`,
   ].join('\n');
 
   const user = [
@@ -29,7 +34,7 @@ async function journal(ctx, decision, action, verdict) {
   const body = await ask({ system, user, maxTokens: 1500 });
 
   // Write the entry file.
-  const seq = String(day).padStart(3, '0');
+  const seq = String(run).padStart(3, '0');
   const slug = (decision.concept || 'session').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
   const file = path.join(config.workspaceDir, 'JOURNAL', `${seq}-${slug}.md`);
   fs.writeFileSync(file, body.trim() + '\n');
@@ -37,7 +42,9 @@ async function journal(ctx, decision, action, verdict) {
   // Update knowledge state — the harness owns this, never the agent.
   const statePath = path.join(config.workspaceDir, 'knowledge', 'state.json');
   const state = ctx.state;
+  state.run = run;
   state.day = day;
+  state.born = born;
   if (verdict.green && decision.concept) {
     state.score = (state.score ?? 0) + 1;
     state.proven = [...new Set([...(state.proven ?? []), decision.concept])];
@@ -45,7 +52,7 @@ async function journal(ctx, decision, action, verdict) {
   }
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
 
-  return { file, day, seq, body };
+  return { file, run, day, seq, body };
 }
 
 module.exports = journal;
